@@ -13,7 +13,7 @@ class TankBounds:
         self.zmax=zmax
 
 class FishState():
-    def __init__(self,x=0.3,y=0.15,z=-0.05,tilt=.5,psi=math.pi,U = 0, Psidot =0, Tiltdot = 0,zdot = 0):
+    def __init__(self,x=0.3,y=0.15,z=-0.15,tilt=.5,psi=math.pi,U = 0, Psidot =0, Tiltdot = 0,zdot = 0):
         self.x=x
         self.y=y
         self.z = z
@@ -105,7 +105,7 @@ class FishBrain:
             #save last dice roll time
             self.lastTime = timenow
             #actually set new state
-            print(self.state,hunt,self.wasHunting)
+            #print(self.state,hunt,self.wasHunting)
             self.state = newstate
             #save old value of hunt update
             self.wasHunting = hunt
@@ -151,24 +151,48 @@ class PTWSwimController:
         return u,ControllerErrors()
 
 
-
-
-
-class DeterministicSwimController:
-    def __init__(self,Kpspeed=.1,Kppsi=.1,Kptilt=.1,Kpz = 0.1):
+class TargetingController:
+    def __init__(self,Kpspeed=.1,Kppsi=.1,Kptilt=.1,Kpz = 0.1,tiltAng = 1.0,shotDepth = 0.0):
         self.Kpspeed = Kpspeed
         self.Kppsi = Kppsi
         self.Kptilt = Kptilt
         self.Kpz = Kpz
+        self.tiltAng = tiltAng
+        self.shotDepth = shotDepth
 
-    def getControl(self,goal,fishstate):
+    def getTargetingError(self,goal,fishstate):
+        #get global x and y 
+        Y_err = goal.y-fishstate.y
+        X_err = goal.x-fishstate.x
+        #find angle between fish CG and target
+        goal_ang = math.atan2(Y_err,X_err)
+        #find x distance in fish's local coordinate system to target
+        x_dist = X_err*math.cos(fishstate.psi) - Y_err*math.cos(fishstate.psi)
+        #find goal distance based on target height
+        goal_dist = (goal.z-self.shotDepth)/(math.tan(self.tiltAng))
+        print(goal_dist)
+        ang_err = -goal_ang + (fishstate.psi/(2*math.pi))
+        x_err = -goal_dist+x_dist
+        return x_err,ang_err
+    
+    def getControl(self,goal,fishstate,brainstate):
         error = ControllerErrors()
         u = ControllerInputs()
+        #use built-in function to get the planar error 
+        x_err,ang_err = self.getTargetingError(goal,fishstate)
         #this error should be the "local x" error for the fish.
-        error.e_dist = ((fishstate.x-goal.x)**2 + (fishstate.y-goal.y)**2)**.5
-        error.e_z = goal.z-fishstate.z
-        error.e_tilt = goal.tilt-fishstate.tilt
-        error.e_psi = goal.psi - fishstate.psi
+        error.e_dist = x_err
+        if(brainstate=="huntswim"):
+            error.e_z=0
+        else:
+            error.e_z = (self.shotDepth-fishstate.z)
+        if(brainstate==("huntswim" or "huntrise")):
+            error.e_tilt = 0
+        elif(brainstate==("hunttilt")):
+            error.e_tilt = self.tiltAng-fishstate.tilt
+        elif(brainstate==("huntcapture")):
+            error.e_tilt = 0-fishstate.tilt
+        error.e_psi = ang_err
         u.u_U = self.Kpspeed*error.e_dist
         u.u_z = self.Kpz*error.e_z
         u.u_tilt = self.Kptilt*error.e_tilt
@@ -180,20 +204,19 @@ class DeterministicSwimController:
 
 
 
+
 class FishControlManager:
-    def __init__(self,goals = [FishState(),FishState(),FishState(),FishState()],sc = PTWSwimController(),cc = PTWSwimController(),hsc = DeterministicSwimController(),hrc = DeterministicSwimController(),htc = DeterministicSwimController(),hcc=DeterministicSwimController(),TankBounds = [0,.6,0,.3,-.3,0]):
+    def __init__(self,goal = FishState(),sc = PTWSwimController(),cc = PTWSwimController(),tc = TargetingController(),TankBounds = [0,.6,0,.3,-.3,0]):
         self.sc = sc
         self.cc = cc
-        self.hsc = hsc
-        self.htc = htc
-        self.hcc = hcc
-        self.hrc = hrc
+
+        self.tc =tc
         self.control_inputs = ControllerInputs()
-        self.control_inputs = ControllerErrors()
+        self.control_errors = ControllerErrors()
         self.robotcommand = FishState()
         self.fishstate_old = FishState()
         self.oldtime = 0
-        self.goals = goals
+        self.goal = goal
         self.TankBounds = TankBounds
 
     def getControl(self,brainstate,fishstate,timenow):
@@ -204,19 +227,10 @@ class FishControlManager:
             u,e = self.sc.getControl(fishstate,timenow)
         elif(brainstate == "coast"):
             u,e = self.cc.getControl(fishstate,timenow)
-        elif(brainstate == "huntswim"):
-            goal = self.goals[0]
-            u,e = self.hsc.getControl(goal,fishstate)
-        elif(brainstate == "huntrise"):
-            goal = self.goals[1]
-            u,e = self.hsc.getControl(goal,fishstate)
-        elif(brainstate == "hunttilt"):
-            goal = self.goals[2]
-            u,e = self.htc.getControl(goal,fishstate)
-        elif(brainstate == "huntcapture"):
-            goal = self.goals[3]
-            u,e = self.hcc.getControl(goal,fishstate)
+        elif((brainstate == "huntswim") or (brainstate == "huntrise") or (brainstate == "hunttilt") or (brainstate == "huntcapture")):
+            u,e = self.tc.getControl(self.goal,fishstate,brainstate)
         else:
+            print("brainstate is: "+brainstate)
             print("no valid brain state! from controllermanager")
         
         self.control_inputs = u

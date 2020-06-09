@@ -1,3 +1,5 @@
+import math 
+
 def arrow(x1,y1,x2,y2): 
   line(x1, y1, x2, y2)
   pushMatrix()
@@ -8,22 +10,27 @@ def arrow(x1,y1,x2,y2):
   line(0, 0, 10, -10)
   popMatrix()
 
-class TargetViz:
-    def __init__(self,ox,oy,simscale,diam,pose):
+class TargetVizTop:
+    def __init__(self,ox,oy,simscale,diam,pose,bounds):
         self.pose = pose
         self.ox = ox
         self.oy = oy
         self.simscale = simscale
         self.diam = diam
-    def drawTargetTop():
+        self.bounds = bounds
+    def drawTargetTop(self,contman):
         pushMatrix()
         translate(self.ox,self.oy)
         scale(self.simscale)
         strokeWeight(1.0/self.simscale)
-        fill(color(255,0,0))
+        fill(color(255,0,0,0.15))
         stroke(0)
-        ellipse(self.pose.x,-self.pose.y,self.diam,self.diam)
+        ellipse(self.pose.x,self.bounds[3]-self.pose.y,self.diam,self.diam)
+        #use the targeting controller class to get the radius
+        shotdiam = 2*(self.pose.z-contman.tc.shotDepth)/math.tan(contman.tc.tiltAng)
+        ellipse(self.pose.x,self.bounds[3]-self.pose.y,shotdiam,shotdiam)
         popMatrix()
+        fill(255)
         
 
 class TankVizTop:
