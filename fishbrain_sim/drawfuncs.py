@@ -8,6 +8,23 @@ def arrow(x1,y1,x2,y2):
   line(0, 0, 10, -10)
   popMatrix()
 
+class TargetViz:
+    def __init__(self,ox,oy,simscale,diam,pose):
+        self.pose = pose
+        self.ox = ox
+        self.oy = oy
+        self.simscale = simscale
+        self.diam = diam
+    def drawTargetTop():
+        pushMatrix()
+        translate(self.ox,self.oy)
+        scale(self.simscale)
+        strokeWeight(1.0/self.simscale)
+        fill(color(255,0,0))
+        stroke(0)
+        ellipse(self.pose.x,-self.pose.y,self.diam,self.diam)
+        popMatrix()
+        
 
 class TankVizTop:
     def __init__(self,ox,oy,simscale,bounds):
@@ -110,7 +127,7 @@ class Button:
     self.newtouch = self.touched and  not self.wastouched;
     if(self.latching):
       if(self.newtouch):
-        print("hello from newtouch latching")
+        #print("hello from newtouch latching")
         self.state=not self.state
     else:
         self.state = self.touched

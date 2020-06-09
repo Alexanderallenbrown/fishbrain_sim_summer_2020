@@ -13,7 +13,7 @@ class TankBounds:
         self.zmax=zmax
 
 class FishState():
-    def __init__(self,x=0.3,y=0.15,z=-0.15,tilt=.5,psi=math.pi,U = 0, Psidot =0, Tiltdot = 0,zdot = 0):
+    def __init__(self,x=0.3,y=0.15,z=-0.05,tilt=.5,psi=math.pi,U = 0, Psidot =0, Tiltdot = 0,zdot = 0):
         self.x=x
         self.y=y
         self.z = z
@@ -97,6 +97,7 @@ class FishBrain:
                         self.complete = True
                     else:
                         newstate = self.state
+            
             else:
                 #tell the brain that we are not done hunting
                 self.complete = False
@@ -104,9 +105,10 @@ class FishBrain:
             #save last dice roll time
             self.lastTime = timenow
             #actually set new state
+            print(self.state,hunt,self.wasHunting)
             self.state = newstate
-        #save old value of hunt update
-        self.wasHunting = hunt
+            #save old value of hunt update
+            self.wasHunting = hunt
         #actually return the state of the brain to be used in other object/function calls.
         return self.state
 
@@ -162,9 +164,10 @@ class DeterministicSwimController:
     def getControl(self,goal,fishstate):
         error = ControllerErrors()
         u = ControllerInputs()
-        error.e_dist = ((fishstate.x-self.goal.x)**2 + (fishstate.y-self.goal.y)**2)**.5
+        #this error should be the "local x" error for the fish.
+        error.e_dist = ((fishstate.x-goal.x)**2 + (fishstate.y-goal.y)**2)**.5
         error.e_z = goal.z-fishstate.z
-        error.e_tilt = goal.tilst-fishstate.tilt
+        error.e_tilt = goal.tilt-fishstate.tilt
         error.e_psi = goal.psi - fishstate.psi
         u.u_U = self.Kpspeed*error.e_dist
         u.u_z = self.Kpz*error.e_z
@@ -279,4 +282,3 @@ class FishControlManager:
             self.robotcommand.z = self.TankBounds[4]
 
         return self.robotcommand,self.control_inputs,self.controller_error
-

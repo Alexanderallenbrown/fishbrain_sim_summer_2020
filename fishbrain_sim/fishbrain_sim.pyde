@@ -2,10 +2,16 @@ from random import random,gauss
 from HybridFishBrain import TankBounds,FishState,ControllerErrors,ControllerInputs,FishBrain,PTWSwimController,DeterministicSwimController,FishControlManager
 from simGantry import SimGantry
 from math import pi
-from drawfuncs import TankVizTop,TankVizFront,Button
+from drawfuncs import TankVizTop,TankVizFront,Button,TargetViz
 
 
 #set up goal positions for each action
+# goal1 = FishState(.3,.15,-0.1,0,pi)
+# goal2 = FishState(.3,.15,-0.02,0,pi)
+# goal3 = FishState(.3,.15,-0.02,-0.5,pi)
+# goal4 = FishState(.3,.1,-0.02,0,pi)
+
+#these are the goals. They're all target positions but with different heights and tilts
 goal1 = FishState(.3,.15,-0.1,0,pi)
 goal2 = FishState(.3,.15,-0.02,0,pi)
 goal3 = FishState(.3,.15,-0.02,-0.5,pi)
@@ -29,7 +35,7 @@ cont = FishControlManager(goals,sc,cc,hsc,hrc,htc,hcc,TankBounds)
 gantry = SimGantry()
 
 w = 640
-h = 960
+h = 720
 tanktop = TankVizTop(75,100,500,TankBounds)
 tankfront = TankVizFront(75,400,500,TankBounds)
 
@@ -48,7 +54,7 @@ def draw():
     gantry.update(command,timenow)
     
     
-    print(brain.state)
+    #print(brain.state)
     #print(gantry.state.x,gantry.state.y,gantry.state.psi)
     
     background(255)
@@ -65,6 +71,7 @@ def draw():
     textSize(24)
     text("Top View Tank",w/2,80)
     text("Front View Tank",w/2,380)
+    text("Robot State: "+brain.state,w/2,650)
     
     rtarg.updateButton()
     
