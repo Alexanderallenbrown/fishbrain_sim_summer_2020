@@ -108,7 +108,7 @@ class FishBrain:
 
 
 class PTWSwimController:
-    def __init__(self,muu=0.02,muw=0.02,muz = 0.0, nu=.03,nw=.1, nz = 0.005,tauu=0.5,tauw = 0.1,tauz = .5):
+    def __init__(self,muu=0.02,muw=0.00,muz = 0.0, nu=.03,nw=.02, nz = 0.005,tauu=0.5,tauw = 0.1,tauz = .5):
         self.muu = muu
         self.muw = muw
         self.muz = muz
@@ -230,10 +230,10 @@ class FishControlManager:
 
         self.control_inputs,error = self.getControl(brainstate,fishstate,timenow)
         #only update if the robot isn't running into a wall.
-        if(not (((fishstate.x>=self.TankBounds[1]) and (self.control_inputs.u_U*cos(self.robotcommand.psi)<0)) or ((fishstate.x<=self.TankBounds[0]) and (self.control_inputs.u_U*cos(self.robotcommand.psi)<0)))):
-            self.robotcommand.x += dt*(self.control_inputs.u_U*cos(self.robotcommand.psi))
-        if(not (((fishstate.x>=self.TankBounds[3]) and (self.control_inputs.u_U*sin(self.robotcommand.psi)<0)) or ((fishstate.y<=self.TankBounds[2]) and (self.control_inputs.u_U*sin(self.robotcommand.psi)<0)))):
-            self.robotcommand.y += dt*(self.control_inputs.u_U*sin(self.robotcommand.psi))
+        if(not (((fishstate.x>=self.TankBounds[1]) and (self.control_inputs.u_U*cos(fishstate.psi)<0)) or ((fishstate.x<=self.TankBounds[0]) and (self.control_inputs.u_U*cos(fishstate.psi)<0)))):
+            self.robotcommand.x += dt*(self.control_inputs.u_U*cos(fishstate.psi))
+        if(not (((fishstate.x>=self.TankBounds[3]) and (self.control_inputs.u_U*sin(fishstate.psi)<0)) or ((fishstate.y<=self.TankBounds[2]) and (self.control_inputs.u_U*sin(fishstate.psi)<0)))):
+            self.robotcommand.y += dt*(self.control_inputs.u_U*sin(fishstate.psi))
         if(not (((fishstate.z>=self.TankBounds[5]) and (self.control_inputs.u_z<0)) or ((fishstate.z<=self.TankBounds[4]) and (self.control_inputs.u_z<0)))):
             self.robotcommand.z += dt*(self.control_inputs.u_z)
         if(brainstate == ("swim" or "huntswim" or "huntcapture" or "coast")):

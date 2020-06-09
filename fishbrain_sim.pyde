@@ -2,6 +2,7 @@ from random import random,gauss
 from HybridFishBrain import TankBounds,FishState,ControllerErrors,ControllerInputs,FishBrain,PTWSwimController,DeterministicSwimController,FishControlManager
 from simGantry import SimGantry
 from math import pi
+from drawfuncs import TankViz
 
 
 #set up goal positions for each action
@@ -20,7 +21,7 @@ cc = PTWSwimController(muu=0.0,muw=0.0,muz = 0.0, nu=.03,nw=.1, nz = 0.005,tauu=
 
 goals = [goal1,goal2,goal3,goal4]
 
-TankBounds =[0,.6,0,.3,-.3,0]
+TankBounds =[0,1,0,.3,-.3,0]
 
 brain = FishBrain()
 cont = FishControlManager(goals,sc,cc,hsc,hrc,htc,hcc,TankBounds)
@@ -29,13 +30,15 @@ gantry = SimGantry()
 
 botL = 0.1
 
-simscale = 1000 #pixels per meter
+w = 640
+h = 480
+tank = TankViz(100,100,500,TankBounds)
 
 timenow = 0.0
 
 
 def setup():
-    size(480, 120)
+    size(w, h)
 
 def draw():
     timenow = millis()/1000.0
@@ -43,5 +46,8 @@ def draw():
     brain.update(False,e,timenow)
     gantry.update(command,timenow)
     
-    print(brain.state)
-    print(gantry.state.x,gantry.state.y,gantry.state.psi)
+    #print(brain.state)
+    #print(gantry.state.x,gantry.state.y,gantry.state.psi)
+    
+    background(255)
+    tank.draw(gantry.state)
