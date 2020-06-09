@@ -12,7 +12,7 @@ from drawfuncs import TankVizTop,TankVizFront,Button,TargetVizTop
 # goal4 = FishState(.3,.1,-0.02,0,pi)
 
 #these are the goals. They're all target positions but with different heights and tilts
-goalTarg = FishState(.05,.15,.15,0,0) #the target has no inherent pitch or yaw requirement
+goalTarg = FishState(.85,.15,.15,0,0) #the target has no inherent pitch or yaw requirement
 
 #set up controllers for each state
 tc = TargetingController()

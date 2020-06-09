@@ -152,13 +152,18 @@ class PTWSwimController:
 
 
 class TargetingController:
-    def __init__(self,Kpspeed=.1,Kppsi=.1,Kptilt=.1,Kpz = 0.1,tiltAng = 1.0,shotDepth = 0.0):
+    def __init__(self,Kpspeed=.5,Kppsi=2,Kptilt=1,Kpz = 1,tiltAng = 1.0,shotDepth = 0.0):
         self.Kpspeed = Kpspeed
         self.Kppsi = Kppsi
         self.Kptilt = Kptilt
         self.Kpz = Kpz
         self.tiltAng = tiltAng
         self.shotDepth = shotDepth
+        self.Kpv = .05
+        self.Kptiltdot = .05
+        self.Kppsidot = .25
+        self.Kpzdot = .1
+        self.ang_err_old = 0
 
     def getTargetingError(self,goal,fishstate):
         #get global x and y 
@@ -167,11 +172,21 @@ class TargetingController:
         #find angle between fish CG and target
         goal_ang = math.atan2(Y_err,X_err)
         #find x distance in fish's local coordinate system to target
-        x_dist = X_err*math.cos(fishstate.psi) - Y_err*math.cos(fishstate.psi)
+        x_dist = X_err*math.cos(fishstate.psi) - Y_err*math.sin(fishstate.psi)
         #find goal distance based on target height
         goal_dist = (goal.z-self.shotDepth)/(math.tan(self.tiltAng))
         print(goal_dist)
-        ang_err = -goal_ang + (fishstate.psi/(2*math.pi))
+        # if(abs(goal_ang - (fishstate.psi%(2*math.pi)))>=abs(-math.pi-goal_ang + (fishstate.psi%(2*math.pi)))):
+        #     ang_err = -math.pi-goal_ang + (fishstate.psi%(2*math.pi))
+        # else:
+        #     ang_err = goal_ang - (fishstate.psi%(2*math.pi))
+        
+        if(abs((goal_ang-fishstate.psi))<abs((goal_ang+2*math.pi-fishstate.psi))):
+            ang_err =   goal_ang - (fishstate.psi)
+        else:
+            ang_err = goal_ang - (fishstate.psi) - math.pi
+            
+            
         x_err = -goal_dist+x_dist
         return x_err,ang_err
     
@@ -186,17 +201,18 @@ class TargetingController:
             error.e_z=0
         else:
             error.e_z = (self.shotDepth-fishstate.z)
-        if(brainstate==("huntswim" or "huntrise")):
+        if(brainstate==("huntswim")  or brainstate==("huntrise")):
             error.e_tilt = 0
         elif(brainstate==("hunttilt")):
-            error.e_tilt = self.tiltAng-fishstate.tilt
+            error.e_tilt = -self.tiltAng-fishstate.tilt
         elif(brainstate==("huntcapture")):
             error.e_tilt = 0-fishstate.tilt
+            error.e_psi = 0
         error.e_psi = ang_err
-        u.u_U = self.Kpspeed*error.e_dist
-        u.u_z = self.Kpz*error.e_z
-        u.u_tilt = self.Kptilt*error.e_tilt
-        u.u_psi = self.Kppsi*error.e_psi
+        u.u_U = self.Kpspeed*error.e_dist - self.Kpv*fishstate.U
+        u.u_z = self.Kpz*error.e_z - self.Kpzdot*fishstate.zdot
+        u.u_tilt = self.Kptilt*error.e_tilt - self.Kptiltdot*fishstate.Tiltdot
+        u.u_psi = self.Kppsi*error.e_psi -self.Kppsidot*fishstate.Psidot
         return u,error
 
 
