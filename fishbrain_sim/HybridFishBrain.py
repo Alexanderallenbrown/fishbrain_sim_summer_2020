@@ -60,7 +60,7 @@ class FishBrain:
         #hunt is a boolean that tells the fish whether the target is out or not (can delay, but do it outside!!)
         #controller_errors is a list of errors from hunt goals. There are 4 hunt goals:
         if ((timenow - self.lastTime)>=self.dT):
-            if ((not hunt) or self.complete):
+            if ((not hunt) or (self.complete and self.wasHunting)):
                 if self.wasHunting:
                     self.state = "swim"
                 #roll the dice
@@ -97,7 +97,6 @@ class FishBrain:
                         self.complete = True
                     else:
                         newstate = self.state
-            
             else:
                 #tell the brain that we are not done hunting
                 self.complete = False
@@ -175,11 +174,7 @@ class TargetingController:
         x_dist = X_err*math.cos(fishstate.psi) - Y_err*math.sin(fishstate.psi)
         #find goal distance based on target height
         goal_dist = (goal.z-self.shotDepth)/(math.tan(self.tiltAng))
-        print(goal_dist)
-        # if(abs(goal_ang - (fishstate.psi%(2*math.pi)))>=abs(-math.pi-goal_ang + (fishstate.psi%(2*math.pi)))):
-        #     ang_err = -math.pi-goal_ang + (fishstate.psi%(2*math.pi))
-        # else:
-        #     ang_err = goal_ang - (fishstate.psi%(2*math.pi))
+        #sprint(goal_dist)
         
         if(abs((goal_ang-fishstate.psi))<abs((goal_ang+2*math.pi-fishstate.psi))):
             ang_err =   goal_ang - (fishstate.psi)
@@ -261,16 +256,22 @@ class FishControlManager:
             dt=.001
             print("trouble with dt! from controller")
         self.oldtime = timenow
-        uplanar = ((fishstate.x-self.fishstate_old.x)**2+(fishstate.y-self.fishstate_old.y)**2)**.5/dt
-        uz = (fishstate.z-self.fishstate_old.z)/dt
-        #fishstate.U = uplanar
-        #fishstate.zdot = uz
+        # uplanar = ((fishstate.x-self.fishstate_old.x)**2+(fishstate.y-self.fishstate_old.y)**2)**.5/dt
+        # uz = (fishstate.z-self.fishstate_old.z)/dt
+        # #fishstate.U = uplanar
+        # #fishstate.zdot = uz
 
 
         self.control_inputs,error = self.getControl(brainstate,fishstate,timenow)
         # fishstate.U = self.control_inputs.u_U
         # fishstate.Psidot = self.control_inputs.u_psi
         # fishstate.Tiltdot = self.control_inputs.u_tilt
+        self.robotcommand.U = self.control_inputs.u_U
+        self.robotcommand.Psidot = self.control_inputs.u_psi
+        self.robotcommand.Tiltdot = self.control_inputs.u_tilt
+        self.robotcommand.zdot = self.control_inputs.u_z
+        uplanar = self.control_inputs.u_U
+        uz = self.robotcommand.zdot
         
         #only update if the robot isn't running into a wall.
         if(not (((self.robotcommand.x>=self.TankBounds[1]) and (self.control_inputs.u_U*cos(self.robotcommand.psi)>0)) or ((self.robotcommand.x<=self.TankBounds[0]) and (self.control_inputs.u_U*cos(self.robotcommand.psi)<0)))):
@@ -283,7 +284,8 @@ class FishControlManager:
         if(not (((self.robotcommand.z>=self.TankBounds[5]) and (self.control_inputs.u_z>0)) or ((self.robotcommand.z<=self.TankBounds[4]) and (self.control_inputs.u_z<0)))):
             self.robotcommand.z += dt*(self.control_inputs.u_z)
         if(brainstate == ("swim" or "huntswim" or "huntcapture" or "coast")):
-            self.robotcommand.tilt = atan2(uz,uplanar)
+            # self.robotcommand.tilt = atan2(uz,uplanar)
+            self.robotcommand.tilt = 0 #atan2(self.robotcommand.zdot,self.robotcommand.U)
         else:
             self.robotcommand.tilt += dt*(self.control_inputs.u_tilt)
         self.robotcommand.psi += dt*(self.control_inputs.u_psi)
