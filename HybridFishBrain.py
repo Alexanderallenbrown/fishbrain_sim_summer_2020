@@ -13,12 +13,16 @@ class TankBounds:
         self.zmax=zmax
 
 class FishState():
-    def __init__(self,x=0.3,y=0.15,z=0.05,tilt=.5,psi=math.pi):
+    def __init__(self,x=0.3,y=0.15,z=0.05,tilt=.5,psi=math.pi,U = 0, Psidot =0, Tiltdot = 0,zdot = 0):
         self.x=x
         self.y=y
         self.z = z
         self.tilt = tilt
         self.psi = psi
+        self.U = U
+        self.Psidot = Psidot
+        self.Tiltdot = Tiltdot
+        self.zdot = zdot
 
 class ControllerErrors:
     def __init__(self,e_dist=1000,e_z=1000,e_tilt=1000,e_psi=1000):
@@ -108,7 +112,7 @@ class FishBrain:
 
 
 class PTWSwimController:
-    def __init__(self,muu=0.02,muw=0.00,muz = 0.0, nu=.03,nw=.02, nz = 0.005,tauu=0.5,tauw = 0.1,tauz = .5):
+    def __init__(self,muu=0.02,muw=0.00,muz = 0.0, nu=.003,nw=.02, nz = 0.005,tauu=0.5,tauw = 0.1,tauz = .5):
         self.muu = muu
         self.muw = muw
         self.muz = muz
@@ -126,16 +130,16 @@ class PTWSwimController:
         self.currzdot = 0
     def getControl(self,fishstate,timenow):
         dT = timenow-self.oldtime
+        self.oldtime = timenow
         if(dT<=0):
             dT=0.01
-        self.currzdot = (fishstate.z-self.fishstate_old.z)/dT
-        self.currspeed = ((fishstate.x-self.fishstate_old.x)**2+(fishstate.y-self.fishstate_old.y)**2)**.5
-        self.currpsidot = (fishstate.psi-self.fishstate_old.psi)/dT
+        self.currzdot = fishstate.zdot#(fishstate.z-self.fishstate_old.z)/dT
+        self.currspeed = fishstate.U#((fishstate.x-self.fishstate_old.x)**2+(fishstate.y-self.fishstate_old.y)**2)**.5
+        self.currpsidot = fishstate.Psidot#(fishstate.psi-self.fishstate_old.psi)/dT
 
         self.currzdot += dT/self.tauz*(self.muz-self.currzdot)+gauss(0,self.nz)
         self.currspeed += dT/self.tauu*(self.muu-self.currspeed)+gauss(0,self.nu)
         self.currpsidot += dT/self.tauw*(self.muw-self.currpsidot)+gauss(0,self.nw)
-
         u = ControllerInputs()
         u.u_U = self.currspeed
         u.u_z = self.currzdot
@@ -211,7 +215,7 @@ class FishControlManager:
             u,e = self.hcc.getControl(goal,fishstate)
         else:
             print("no valid brain state! from controllermanager")
-
+        
         self.control_inputs = u
         self.controller_error = e
         self.fishstate_old = fishstate
@@ -226,21 +230,53 @@ class FishControlManager:
         self.oldtime = timenow
         uplanar = ((fishstate.x-self.fishstate_old.x)**2+(fishstate.y-self.fishstate_old.y)**2)**.5/dt
         uz = (fishstate.z-self.fishstate_old.z)/dt
+        #fishstate.U = uplanar
+        #fishstate.zdot = uz
 
 
         self.control_inputs,error = self.getControl(brainstate,fishstate,timenow)
+        # fishstate.U = self.control_inputs.u_U
+        # fishstate.Psidot = self.control_inputs.u_psi
+        # fishstate.Tiltdot = self.control_inputs.u_tilt
+        
         #only update if the robot isn't running into a wall.
-        if(not (((fishstate.x>=self.TankBounds[1]) and (self.control_inputs.u_U*cos(fishstate.psi)<0)) or ((fishstate.x<=self.TankBounds[0]) and (self.control_inputs.u_U*cos(fishstate.psi)<0)))):
+        if(not (((self.robotcommand.x>=self.TankBounds[1]) and (self.control_inputs.u_U*cos(self.robotcommand.psi)>0)) or ((self.robotcommand.x<=self.TankBounds[0]) and (self.control_inputs.u_U*cos(self.robotcommand.psi)<0)))):
             self.robotcommand.x += dt*(self.control_inputs.u_U*cos(fishstate.psi))
-        if(not (((fishstate.x>=self.TankBounds[3]) and (self.control_inputs.u_U*sin(fishstate.psi)<0)) or ((fishstate.y<=self.TankBounds[2]) and (self.control_inputs.u_U*sin(fishstate.psi)<0)))):
+
+            
+        if(not (((self.robotcommand.y>=self.TankBounds[3]) and (self.control_inputs.u_U*sin(self.robotcommand.psi)>0)) or ((self.robotcommand.y<=self.TankBounds[2]) and (self.control_inputs.u_U*sin(self.robotcommand.psi)<0)))):
             self.robotcommand.y += dt*(self.control_inputs.u_U*sin(fishstate.psi))
-        if(not (((fishstate.z>=self.TankBounds[5]) and (self.control_inputs.u_z<0)) or ((fishstate.z<=self.TankBounds[4]) and (self.control_inputs.u_z<0)))):
+
+        if(not (((self.robotcommand.z>=self.TankBounds[5]) and (self.control_inputs.u_z>0)) or ((self.robotcommand.z<=self.TankBounds[4]) and (self.control_inputs.u_z<0)))):
             self.robotcommand.z += dt*(self.control_inputs.u_z)
         if(brainstate == ("swim" or "huntswim" or "huntcapture" or "coast")):
             self.robotcommand.tilt = atan2(uz,uplanar)
         else:
             self.robotcommand.tilt += dt*(self.control_inputs.u_tilt)
         self.robotcommand.psi += dt*(self.control_inputs.u_psi)
+
+        self.robotcommand.U = self.control_inputs.u_U
+        self.robotcommand.Psidot = self.control_inputs.u_psi
+        self.robotcommand.Tiltdot = self.control_inputs.u_tilt
+        
+        if( ((self.robotcommand.y>=self.TankBounds[3]) ) ):
+            self.robotcommand.y=self.TankBounds[3]
+            self.robotcommand.U = uplanar
+        if( (self.robotcommand.y<=self.TankBounds[2]) ):
+            self.robotcommand.y = self.TankBounds[2]
+            self.robotcommand.U = uplanar
+        if ((self.robotcommand.x>=self.TankBounds[1])):
+            self.robotcommand.x = self.TankBounds[1]
+            self.robotcommand.U = uplanar
+        if ( (self.robotcommand.x<=self.TankBounds[0])):
+            self.robotcommand.x = self.TankBounds[0]
+            self.robotcommand.U = uplanar
+        if(self.robotcommand.z>=self.TankBounds[5]):
+            self.robotcommand.zdot = uz
+            self.robotcommand.z=self.TankBounds[5]
+        if(self.robotcommand.z<=self.TankBounds[4]):
+            self.robotcommand.zdot = uz
+            self.robotcommand.z = self.TankBounds[4]
 
         return self.robotcommand,self.control_inputs,self.controller_error
 

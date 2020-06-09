@@ -8,7 +8,7 @@ def sign(inp):
     return out
 
 class SimGantry:
-    def __init__(self,taurect = 0.05,taurot = 0.05,state = FishState(),vxmax = 0.3,vymax=.15,vzmax=0.05,tiltmax=1.0,yawmax = 6.0):
+    def __init__(self,taurect = 0.01,taurot = 0.01,state = FishState(),vxmax = 0.3,vymax=.15,vzmax=0.05,tiltmax=1.0,yawmax = 6.0):
         self.state = state
         self.oldtime = 0
         self.vxmax = vxmax
@@ -43,5 +43,8 @@ class SimGantry:
         self.state.z+=dt*vz
         self.state.tilt+=dt*vtilt
         self.state.psi+=dt*vyaw
+        self.state.U = (vx**2+vy**2)**.5
+        self.state.Psidot = vyaw
+        self.state.Tiltdot = vtilt
         return self.state
 

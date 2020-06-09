@@ -16,19 +16,17 @@ hsc = DeterministicSwimController()
 hrc = DeterministicSwimController()
 htc = DeterministicSwimController()
 hcc = DeterministicSwimController()
-sc = PTWSwimController()
-cc = PTWSwimController(muu=0.0,muw=0.0,muz = 0.0, nu=.03,nw=.1, nz = 0.005,tauu=0.5,tauw = 0.1,tauz = .5)
+sc = PTWSwimController(muu=0.02,muw=0.1,muz = 0.0, nu=.01,nw=.5, nz = 0.005,tauu=0.1,tauw = .1,tauz = .1)
+cc = PTWSwimController(muu=0.0,muw=0.0,muz = 0.0, nu=0,nw=0, nz = 0,tauu=0.1,tauw = .1,tauz = .1)
 
 goals = [goal1,goal2,goal3,goal4]
 
 TankBounds =[0,1,0,.3,-.3,0]
 
-brain = FishBrain()
+brain = FishBrain(TranMat=[[.9,.1],[.05,.95]])
 cont = FishControlManager(goals,sc,cc,hsc,hrc,htc,hcc,TankBounds)
 
 gantry = SimGantry()
-
-botL = 0.1
 
 w = 640
 h = 480
@@ -46,8 +44,11 @@ def draw():
     brain.update(False,e,timenow)
     gantry.update(command,timenow)
     
-    #print(brain.state)
+    
+    print(brain.state)
     #print(gantry.state.x,gantry.state.y,gantry.state.psi)
     
     background(255)
     tank.draw(gantry.state)
+    stroke(125);
+    tank.drawFishTop(command)
