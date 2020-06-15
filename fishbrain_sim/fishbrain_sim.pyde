@@ -2,7 +2,7 @@ from random import random,gauss
 from HybridFishBrain import TankBounds,FishState,ControllerErrors,ControllerInputs,FishBrain,PTWSwimController,TargetingController,FishControlManager
 from simGantry import SimGantry
 from math import pi
-from drawfuncs import TankVizTop,TankVizFront,Button,TargetVizTop
+from drawfuncs import TankVizTop,TankVizFront,Button,TargetVizTop,TargetVizFront
 
 
 #set up goal positions for each action
@@ -32,9 +32,11 @@ w = 640
 h = 720
 tanktop = TankVizTop(75,100,500,TankBounds)
 rtarg_viztop = TargetVizTop(75,100,500,.05,goalTarg,TankBounds)
+rtarg_vizfront = TargetVizFront(75,400,500,.05,goalTarg,TankBounds)
 tankfront = TankVizFront(75,400,500,TankBounds)
 
-rtarg = Button(.75*w,300,25,"right target",14,True,'r')
+
+rtarg = Button(.55*w,300,25,"right target",14,True,'r')
 
 timenow = 0.0
 
@@ -59,6 +61,7 @@ def draw():
     tankfront.draw(gantry.state)
     if(rtarg.state):
         rtarg_viztop.drawTargetTop(cont)
+        rtarg_vizfront.drawTargetFront(cont)
     #draw second fish
     stroke(125);
     tanktop.drawFishTop(command)

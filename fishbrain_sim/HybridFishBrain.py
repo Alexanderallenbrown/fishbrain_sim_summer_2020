@@ -31,11 +31,12 @@ class FishState():
         self.zdot = zdot
 
 class ControllerErrors:
-    def __init__(self,e_dist=1000,e_z=1000,e_tilt=1000,e_psi=1000):
+    def __init__(self,e_dist=1000,e_z=1000,e_tilt=1000,e_psi=1000,true_dist=1000):
         self.e_dist = e_dist
         self.e_z = e_z
         self.e_tilt = e_tilt
         self.e_psi = e_psi
+        self.true_dist = true_dist
 
 class ControllerInputs:
     def __init__(self,u_U=0,u_z=0,u_tilt=0,u_psi=0):
@@ -83,7 +84,7 @@ class FishBrain:
                         newstate = self.state
             elif (hunt and self.wasHunting and not self.complete):
                 if(self.state=="huntswim"):
-                    if(abs(controller_error.e_dist)<=self.edist_thresh):
+                    if(abs(controller_error.true_dist)<=self.edist_thresh):
                         newstate = "huntrise"
                     else:
                         newstate = self.state
@@ -167,7 +168,7 @@ class TargetingController:
         self.shotDepth = shotDepth
         self.Kpv = .05
         self.Kptiltdot = .05
-        self.Kppsidot = 0
+        self.Kppsidot = .75
         self.Kpzdot = .1
         self.ang_err_old = 0
 
@@ -179,12 +180,14 @@ class TargetingController:
         goal_ang = math.atan2(Y_err,X_err)
         #print(goal_ang)
         #find x distance in fish's local coordinate system to target
-        x_dist = X_err*math.cos(fishstate.psi) - Y_err*math.sin(fishstate.psi)
+        x_dist = X_err*math.cos(fishstate.psi) + Y_err*math.sin(fishstate.psi)
         #find goal distance based on target height
+        
         if( not huntcapture):
             goal_dist = (goal.z-self.shotDepth)/(math.tan(self.tiltAng))
         else:
             goal_dist = 0
+        true_dist = goal_dist - ((fishstate.x-goal.x)**2+(fishstate.y-goal.y)**2)**.5
         #sprint(goal_dist)
         
         # if(abs((goal_ang-fishstate.psi))<abs((goal_ang+2*math.pi-fishstate.psi))):
@@ -193,17 +196,18 @@ class TargetingController:
         #     ang_err = goal_ang*round(fishstate.psi/(2*math.pi))*2*math.pi - (fishstate.psi) - math.pi
         goal_ang = 2*math.pi*round(fishstate.psi/(2*math.pi)) + goal_ang
         ang_err = goal_ang-fishstate.psi    
-        print(goal_ang-fishstate.psi)
+        #print(goal_ang-fishstate.psi)
         x_err = -goal_dist+x_dist
-        return x_err,ang_err
+        return x_err,ang_err,true_dist
     
     def getControl(self,goal,fishstate,brainstate,huntcapture=False):
         error = ControllerErrors()
         u = ControllerInputs()
         #use built-in function to get the planar error 
-        x_err,ang_err = self.getTargetingError(goal,fishstate,huntcapture)
+        x_err,ang_err,true_dist = self.getTargetingError(goal,fishstate,huntcapture)
         #this error should be the "local x" error for the fish.
         error.e_dist = x_err
+        error.true_dist = true_dist
         if(brainstate=="huntswim"):
             error.e_z=0
         else:

@@ -23,15 +23,36 @@ class TargetVizTop:
         translate(self.ox,self.oy)
         scale(self.simscale)
         strokeWeight(1.0/self.simscale)
-        fill(color(255,0,0,0.15))
-        stroke(0)
+        fill(color(255,0,0,.1))
+        stroke(color(255,0,0))
+        alpha(.5)
         ellipse(self.pose.x,self.bounds[3]-self.pose.y,self.diam,self.diam)
         #use the targeting controller class to get the radius
         shotdiam = 2*(self.pose.z-contman.tc.shotDepth)/math.tan(contman.tc.tiltAng)
         ellipse(self.pose.x,self.bounds[3]-self.pose.y,shotdiam,shotdiam)
         popMatrix()
         fill(255)
+
+class TargetVizFront:
+    def __init__(self,ox,oy,simscale,diam,pose,bounds):
+        self.pose = pose
+        self.ox = ox
+        self.oy = oy
+        self.simscale = simscale
+        self.diam = diam
+        self.bounds = bounds
+    def drawTargetFront(self,contman):
+        pushMatrix()
+        translate(self.ox,self.oy)
+        scale(self.simscale)
+        strokeWeight(1.0/self.simscale)
+        fill(color(255,0,0))
+        stroke(color(255,0,0))
+        ellipse(self.pose.x,self.bounds[5]-self.pose.z,self.diam,self.diam)
         
+        popMatrix()
+        fill(255)
+        stroke(0)        
 
 class TankVizTop:
     def __init__(self,ox,oy,simscale,bounds):
