@@ -77,7 +77,7 @@ class FishBrain:
                     else:
                         newstate = self.state
                 elif(self.state=="coast"):
-                    if ((roll>(self.TranMat[1][1])) and (roll<=(self.TranMat[1][0]+self.TranMat[1][0]))):
+                    if ((roll>(self.TranMat[1][1])) and (roll<=(self.TranMat[1][0]+self.TranMat[1][1]))):
                         newstate = "swim"
                     else:
                         newstate = self.state
