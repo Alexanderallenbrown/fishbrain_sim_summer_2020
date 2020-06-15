@@ -2,6 +2,12 @@ from random import random,gauss
 import math
 import time
 
+def sign(inp):
+    if(inp==0):
+        out=0
+    else:
+        out=abs(inp)/inp
+    return out
 
 class TankBounds:
     def __init__(self,xmin=0,xmax=.75,ymin=0,ymax=.3,zmin=0,zmax=.3):
@@ -41,7 +47,7 @@ class ControllerInputs:
 #markov chain in fishbrain only has states swim and coast. Trip out of this is deterministic (signal to hunt)
 # transition matrix defined as: https://en.wikipedia.org/wiki/Stochastic_matrix representing probability of TRANSITION i->j
 class FishBrain:
-    def __init__(self,TranMat=[[.95,.05],[.1,.9]],dT = 0.1):
+    def __init__(self,TranMat=[[.95,.05],[.02,.98]],dT = 0.1):
         #states: swim, coast, huntswim, huntrise, hunttilt, huntcapture
         self.lastTime = 0
         self.wasHunting = False
@@ -71,7 +77,7 @@ class FishBrain:
                     else:
                         newstate = self.state
                 elif(self.state=="coast"):
-                    if ((roll>(self.TranMat[1][1])) and (roll<=(self.TranMat[1][1]+self.TranMat[1][0]))):
+                    if ((roll>(self.TranMat[1][1])) and (roll<=(self.TranMat[1][0]+self.TranMat[1][0]))):
                         newstate = "swim"
                     else:
                         newstate = self.state
@@ -129,19 +135,20 @@ class PTWSwimController:
         self.currspeed = 0
         self.currpsidot = 0
         self.currzdot = 0
-    def getControl(self,fishstate,timenow):
-        dT = timenow-self.oldtime
-        self.oldtime = timenow
+    def getControl(self,fishstate,dT):
+        # dT = timenow-self.oldtime
+        # self.oldtime = timenow
         if(dT<=0):
             dT=0.01
         self.currzdot = fishstate.zdot#(fishstate.z-self.fishstate_old.z)/dT
         self.currspeed = fishstate.U#((fishstate.x-self.fishstate_old.x)**2+(fishstate.y-self.fishstate_old.y)**2)**.5
         self.currpsidot = fishstate.Psidot#(fishstate.psi-self.fishstate_old.psi)/dT
 
-        self.currzdot += dT/self.tauz*(self.muz-self.currzdot)+gauss(0,self.nz)
+        self.currzdot += dT/self.tauz*(self.muz-self.currzdot)+gauss(0,self.nz) + .3*dT/(self.tauz)*(-.15-fishstate.z)
         self.currspeed += dT/self.tauu*(self.muu-self.currspeed)+gauss(0,self.nu)
         self.currpsidot += dT/self.tauw*(self.muw-self.currpsidot)+gauss(0,self.nw)
         u = ControllerInputs()
+        
         u.u_U = self.currspeed
         u.u_z = self.currzdot
         u.u_psi = self.currpsidot
@@ -151,7 +158,7 @@ class PTWSwimController:
 
 
 class TargetingController:
-    def __init__(self,Kpspeed=.5,Kppsi=2,Kptilt=1,Kpz = 1,tiltAng = 1.0,shotDepth = 0.0):
+    def __init__(self,Kpspeed=2,Kppsi=1.5,Kptilt=1,Kpz = .5,tiltAng = 1.0,shotDepth = 0.0):
         self.Kpspeed = Kpspeed
         self.Kppsi = Kppsi
         self.Kptilt = Kptilt
@@ -164,7 +171,7 @@ class TargetingController:
         self.Kpzdot = .1
         self.ang_err_old = 0
 
-    def getTargetingError(self,goal,fishstate):
+    def getTargetingError(self,goal,fishstate,huntcapture=False):
         #get global x and y 
         Y_err = goal.y-fishstate.y
         X_err = goal.x-fishstate.x
@@ -173,23 +180,26 @@ class TargetingController:
         #find x distance in fish's local coordinate system to target
         x_dist = X_err*math.cos(fishstate.psi) - Y_err*math.sin(fishstate.psi)
         #find goal distance based on target height
-        goal_dist = (goal.z-self.shotDepth)/(math.tan(self.tiltAng))
+        if( not huntcapture):
+            goal_dist = (goal.z-self.shotDepth)/(math.tan(self.tiltAng))
+        else:
+            goal_dist = 0
         #sprint(goal_dist)
         
         if(abs((goal_ang-fishstate.psi))<abs((goal_ang+2*math.pi-fishstate.psi))):
-            ang_err =   goal_ang - (fishstate.psi)
+            ang_err =   goal_ang*2*math.pi*round(fishstate.psi/(2*math.pi)) - (fishstate.psi)
         else:
-            ang_err = goal_ang - (fishstate.psi) - math.pi
+            ang_err = goal_ang*round(fishstate.psi/(2*math.pi))*2*math.pi - (fishstate.psi) - math.pi
             
             
         x_err = -goal_dist+x_dist
         return x_err,ang_err
     
-    def getControl(self,goal,fishstate,brainstate):
+    def getControl(self,goal,fishstate,brainstate,huntcapture=False):
         error = ControllerErrors()
         u = ControllerInputs()
         #use built-in function to get the planar error 
-        x_err,ang_err = self.getTargetingError(goal,fishstate)
+        x_err,ang_err = self.getTargetingError(goal,fishstate,huntcapture)
         #this error should be the "local x" error for the fish.
         error.e_dist = x_err
         if(brainstate=="huntswim"):
@@ -203,8 +213,13 @@ class TargetingController:
         elif(brainstate==("huntcapture")):
             error.e_tilt = 0-fishstate.tilt
             error.e_psi = 0
+            
         error.e_psi = ang_err
+        
         u.u_U = self.Kpspeed*error.e_dist - self.Kpv*fishstate.U
+        if(abs(u.u_U)>.05):
+            u.u_U = sign(u.u_U)*.05
+            print("speed limit")
         u.u_z = self.Kpz*error.e_z - self.Kpzdot*fishstate.zdot
         u.u_tilt = self.Kptilt*error.e_tilt - self.Kptiltdot*fishstate.Tiltdot
         u.u_psi = self.Kppsi*error.e_psi -self.Kppsidot*fishstate.Psidot
@@ -230,16 +245,18 @@ class FishControlManager:
         self.goal = goal
         self.TankBounds = TankBounds
 
-    def getControl(self,brainstate,fishstate,timenow):
+    def getControl(self,brainstate,fishstate,dt):
         
         #format for these is [U phidot psidot]
         #fishstate is [X Y Z phi psi], used for computing control inputs
         if(brainstate == "swim"):
-            u,e = self.sc.getControl(fishstate,timenow)
+            u,e = self.sc.getControl(fishstate,dt)
         elif(brainstate == "coast"):
-            u,e = self.cc.getControl(fishstate,timenow)
-        elif((brainstate == "huntswim") or (brainstate == "huntrise") or (brainstate == "hunttilt") or (brainstate == "huntcapture")):
+            u,e = self.cc.getControl(fishstate,dt)
+        elif((brainstate == "huntswim") or (brainstate == "huntrise") or (brainstate == "hunttilt") ):
             u,e = self.tc.getControl(self.goal,fishstate,brainstate)
+        elif((brainstate == "huntcapture")):
+            u,e = self.tc.getControl(self.goal,fishstate,brainstate,True)
         else:
             print("brainstate is: "+brainstate)
             print("no valid brain state! from controllermanager")
@@ -262,7 +279,7 @@ class FishControlManager:
         # #fishstate.zdot = uz
 
 
-        self.control_inputs,error = self.getControl(brainstate,fishstate,timenow)
+        self.control_inputs,error = self.getControl(brainstate,fishstate,dt)
         # fishstate.U = self.control_inputs.u_U
         # fishstate.Psidot = self.control_inputs.u_psi
         # fishstate.Tiltdot = self.control_inputs.u_tilt

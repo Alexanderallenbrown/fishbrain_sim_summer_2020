@@ -23,7 +23,7 @@ goals = goalTarg
 
 TankBounds =[0,1,0,.3,-.3,0]
 
-brain = FishBrain(TranMat=[[.9,.1],[.05,.95]])
+brain = FishBrain(TranMat=[[.9,.1],[.2,.8]])
 cont = FishControlManager(goals,sc,cc,tc,TankBounds)
 
 gantry = SimGantry()
