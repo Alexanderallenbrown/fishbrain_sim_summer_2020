@@ -19,7 +19,7 @@ class TankBounds:
         self.zmax=zmax
 
 class FishState():
-    def __init__(self,x=0.3,y=0.15,z=-0.15,tilt=.5,psi=math.pi,U = 0, Psidot =0, Tiltdot = 0,zdot = 0):
+    def __init__(self,x=0.3,y=0.05,z=-0.15,tilt=.5,psi=math.pi,U = 0, Psidot =0, Tiltdot = 0,zdot = 0):
         self.x=x
         self.y=y
         self.z = z
@@ -167,7 +167,7 @@ class TargetingController:
         self.shotDepth = shotDepth
         self.Kpv = .05
         self.Kptiltdot = .05
-        self.Kppsidot = .25
+        self.Kppsidot = 0
         self.Kpzdot = .1
         self.ang_err_old = 0
 
@@ -177,6 +177,7 @@ class TargetingController:
         X_err = goal.x-fishstate.x
         #find angle between fish CG and target
         goal_ang = math.atan2(Y_err,X_err)
+        #print(goal_ang)
         #find x distance in fish's local coordinate system to target
         x_dist = X_err*math.cos(fishstate.psi) - Y_err*math.sin(fishstate.psi)
         #find goal distance based on target height
@@ -186,12 +187,13 @@ class TargetingController:
             goal_dist = 0
         #sprint(goal_dist)
         
-        if(abs((goal_ang-fishstate.psi))<abs((goal_ang+2*math.pi-fishstate.psi))):
-            ang_err =   goal_ang*2*math.pi*round(fishstate.psi/(2*math.pi)) - (fishstate.psi)
-        else:
-            ang_err = goal_ang*round(fishstate.psi/(2*math.pi))*2*math.pi - (fishstate.psi) - math.pi
-            
-            
+        # if(abs((goal_ang-fishstate.psi))<abs((goal_ang+2*math.pi-fishstate.psi))):
+        #     ang_err =   goal_ang*2*math.pi*round(fishstate.psi/(2*math.pi)) - (fishstate.psi)
+        # else:
+        #     ang_err = goal_ang*round(fishstate.psi/(2*math.pi))*2*math.pi - (fishstate.psi) - math.pi
+        goal_ang = 2*math.pi*round(fishstate.psi/(2*math.pi)) + goal_ang
+        ang_err = goal_ang-fishstate.psi    
+        print(goal_ang-fishstate.psi)
         x_err = -goal_dist+x_dist
         return x_err,ang_err
     
@@ -219,7 +221,7 @@ class TargetingController:
         u.u_U = self.Kpspeed*error.e_dist - self.Kpv*fishstate.U
         if(abs(u.u_U)>.05):
             u.u_U = sign(u.u_U)*.05
-            print("speed limit")
+            #print("speed limit")
         u.u_z = self.Kpz*error.e_z - self.Kpzdot*fishstate.zdot
         u.u_tilt = self.Kptilt*error.e_tilt - self.Kptiltdot*fishstate.Tiltdot
         u.u_psi = self.Kppsi*error.e_psi -self.Kppsidot*fishstate.Psidot
