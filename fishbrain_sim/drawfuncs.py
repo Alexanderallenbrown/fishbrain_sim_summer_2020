@@ -115,7 +115,10 @@ class TankVizFront:
         strokeWeight(1.0/self.simscale)
         translate(fishpose.x,self.bounds[5]-fishpose.z)
         ellipse(0,0,.01,.01)
-        rotate(fishpose.tilt)
+        if(cos(fishpose.psi)<0):
+            rotate(-fishpose.tilt)
+        else:
+            rotate(fishpose.tilt)
         line(0,0,self.fL/2*cos(fishpose.psi),0)
         line(self.fL/2*cos(fishpose.psi),0,0.8*self.fL/2*cos(fishpose.psi),-.01)
         line(self.fL/2*cos(fishpose.psi),0,0.8*self.fL/2*cos(fishpose.psi),.01)
