@@ -3,6 +3,12 @@ from HybridFishBrain import TankBounds,FishState,ControllerErrors,ControllerInpu
 from simGantry import SimGantry
 from math import pi
 from drawfuncs import TankVizTop,TankVizFront,Button,TargetVizTop,TargetVizFront
+from TwoTargets import TwoTargets
+
+rTarg = FishState(.35,.15,.15,0,0) #the target has no inherent pitch or yaw requirement
+lTarg = FishState(.05,.15,.15,0,0)
+#twotargets(ITI_mean,ITI_random,Trial_mean,Trial_random,tleftPose,trightPose)
+targets = TwoTargets(5,1,10,1,lTarg,rTarg)
 
 
 #set up goal positions for each action
@@ -21,7 +27,7 @@ cc = PTWSwimController(muu=0.0,muw=0.0,muz = 0.0, nu=0,nw=0, nz = 0,tauu=0.1,tau
 
 goals = goalTarg
 
-TankBounds =[0,1,0,.3,-.3,0]
+TankBounds =[0,.4,0,.15,-.15,0]
 
 brain = FishBrain(TranMat=[[.9,.1],[.2,.8]])
 cont = FishControlManager(goals,sc,cc,tc,TankBounds)
@@ -30,16 +36,17 @@ gantry = SimGantry()
 
 w = 640
 h = 720
-tanktop = TankVizTop(75,100,500,TankBounds)
-rtarg_viztop = TargetVizTop(75,100,500,.05,goalTarg,TankBounds)
-rtarg_vizfront = TargetVizFront(75,400,500,.05,goalTarg,TankBounds)
-tankfront = TankVizFront(75,400,500,TankBounds)
+tanktop = TankVizTop(200,100,500,TankBounds)
+rtarg_viztop = TargetVizTop(200,100,500,.05,goalTarg,TankBounds)
+rtarg_vizfront = TargetVizFront(200,400,500,.05,goalTarg,TankBounds)
+tankfront = TankVizFront(200,400,500,TankBounds)
 
 
 rtarg = Button(.55*w,300,25,"right target",14,True,'r')
 
 timenow = 0.0
 
+hunt = False
 
 
 
@@ -47,26 +54,39 @@ def setup():
     size(w, h)
 
 def draw():
+    
+    ##LOGIC AND CONTROL
+    
     timenow = millis()/1000.0
+    #update the fish controller's target goal
+    cont.goal = targets.pose
+    #update the fish controller
     command,u,e = cont.getGantryCommand(brain.state,gantry.state,timenow)
-    brain.update(rtarg.state,e,timenow)
+    #update fishbrain state
+    brainstate, shot = brain.update(targets.hunt,e,timenow)
+    #update the robot gantry
     gantry.update(command,timenow)
+    #update the target controller
+    targets.update(shot)
     
     
-    #print(brain.state)
-    #print(gantry.state.x,gantry.state.y,gantry.state.psi)
+    ## DRAWING STUFF
+    
+    rtarg_viztop.pose = targets.pose
+    rtarg_vizfront.pose = targets.pose
+    
     
     background(255)
     tanktop.draw(gantry.state)
     tankfront.draw(gantry.state)
-    if(rtarg.state):
+    if(targets.state=="target"):
         rtarg_viztop.drawTargetTop(cont)
         rtarg_vizfront.drawTargetFront(cont)
     #draw second fish
     stroke(125);
     tanktop.drawFishTop(command)
     tankfront.drawFishFront(command)
-    
+        
     stroke(0);
     fill(0);
     textAlign(CENTER);
@@ -75,6 +95,8 @@ def draw():
     text("Top View Tank",w/2,80)
     text("Front View Tank",w/2,380)
     text("Robot State: "+brain.state,w/2,650)
+    textSize(18)
+    text("block: " + str(targets.block)+ ", trial type: "+targets.trialType+ ", target state: " + targets.state + ", time: " + "{:.2f}".format(targets.elapsed) + "/" + str(targets.duration),w/2,700)
     
-    rtarg.updateButton()
+    #rtarg.updateButton()
     

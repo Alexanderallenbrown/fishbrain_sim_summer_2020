@@ -66,6 +66,7 @@ class FishBrain:
         #timenow will tell us whether to really do a state machine update given our Markov update rate
         #hunt is a boolean that tells the fish whether the target is out or not (can delay, but do it outside!!)
         #controller_errors is a list of errors from hunt goals. There are 4 hunt goals:
+        shot = False
         if ((timenow - self.lastTime)>=self.dT):
             if ((not hunt) or (self.complete and self.wasHunting)):
                 if self.wasHunting:
@@ -94,6 +95,8 @@ class FishBrain:
                     else:
                         newstate = self.state
                 elif(self.state=="hunttilt"):
+                    if(abs(controller_error.e_tilt)<=5*self.etilt_thresh):
+                        shot=True
                     if(abs(controller_error.e_tilt)<=self.etilt_thresh):
                         newstate = "huntcapture"
                     else:
@@ -116,7 +119,7 @@ class FishBrain:
             #save old value of hunt update
             self.wasHunting = hunt
         #actually return the state of the brain to be used in other object/function calls.
-        return self.state
+        return self.state,shot
 
 
 class PTWSwimController:
@@ -145,7 +148,7 @@ class PTWSwimController:
         self.currspeed = fishstate.U#((fishstate.x-self.fishstate_old.x)**2+(fishstate.y-self.fishstate_old.y)**2)**.5
         self.currpsidot = fishstate.Psidot#(fishstate.psi-self.fishstate_old.psi)/dT
 
-        self.currzdot += dT/self.tauz*(self.muz-self.currzdot)+gauss(0,self.nz) + .3*dT/(self.tauz)*(-.15-fishstate.z)
+        self.currzdot += dT/self.tauz*(self.muz-self.currzdot)+gauss(0,self.nz) + .3*dT/(self.tauz)*(-.15/2-fishstate.z)
         self.currspeed += dT/self.tauu*(self.muu-self.currspeed)+gauss(0,self.nu)
         self.currpsidot += dT/self.tauw*(self.muw-self.currpsidot)+gauss(0,self.nw)
         u = ControllerInputs()
