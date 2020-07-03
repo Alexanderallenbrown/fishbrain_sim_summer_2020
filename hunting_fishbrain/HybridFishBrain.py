@@ -1,6 +1,8 @@
 from random import random,gauss
 import math
+from math import *
 import time
+
 
 def sign(inp):
     if(inp==0):
@@ -19,7 +21,7 @@ class TankBounds:
         self.zmax=zmax
 
 class FishState():
-    def __init__(self,x=0.3,y=0.05,z=-0.15,tilt=.5,psi=math.pi,U = 0, Psidot =0, Tiltdot = 0,zdot = 0):
+    def __init__(self,x=0.0,y=0.0,z=0,tilt=.5,psi=0,U = 0, Psidot =0, Tiltdot = 0,zdot = 0):
         self.x=x
         self.y=y
         self.z = z
@@ -145,7 +147,7 @@ class PTWSwimController:
         self.currspeed = fishstate.U#((fishstate.x-self.fishstate_old.x)**2+(fishstate.y-self.fishstate_old.y)**2)**.5
         self.currpsidot = fishstate.Psidot#(fishstate.psi-self.fishstate_old.psi)/dT
 
-        self.currzdot += dT/self.tauz*(self.muz-self.currzdot)+gauss(0,self.nz) + .3*dT/(self.tauz)*(-.15-fishstate.z)
+        self.currzdot += dT/self.tauz*(self.muz-self.currzdot)+gauss(0,self.nz) + .3*dT/(self.tauz)*(-.05-fishstate.z)
         self.currspeed += dT/self.tauu*(self.muu-self.currspeed)+gauss(0,self.nu)
         self.currpsidot += dT/self.tauw*(self.muw-self.currpsidot)+gauss(0,self.nw)
         u = ControllerInputs()
@@ -278,6 +280,9 @@ class FishControlManager:
         if(dt<=0):
             dt=.001
             print("trouble with dt! from controller")
+        if(dt>.1):
+            dt=.1
+            print("trouble with dt!!")
         self.oldtime = timenow
         # uplanar = ((fishstate.x-self.fishstate_old.x)**2+(fishstate.y-self.fishstate_old.y)**2)**.5/dt
         # uz = (fishstate.z-self.fishstate_old.z)/dt
