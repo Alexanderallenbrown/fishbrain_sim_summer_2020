@@ -77,7 +77,7 @@ def draw():
     
     
     background(255)
-    tanktop.draw(gantry.state)
+    tanktop.draw(gantry.state,cont.tailangle)
     tankfront.draw(gantry.state)
     if(targets.state=="target"):
         rtarg_viztop.drawTargetTop(cont)

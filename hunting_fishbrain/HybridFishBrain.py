@@ -243,7 +243,7 @@ class TargetingController:
 
 
 class FishControlManager:
-    def __init__(self,goal = FishState(),sc = PTWSwimController(),cc = PTWSwimController(),tc = TargetingController(),TankBounds = [0,.6,0,.3,-.3,0]):
+    def __init__(self,goal = FishState(),sc = PTWSwimController(),cc = PTWSwimController(),tc = TargetingController(),TankBounds = [0,.6,0,.3,-.3,0],tailamp = 30, tfreqmax = 2*2*PI):
         self.sc = sc
         self.cc = cc
 
@@ -255,6 +255,12 @@ class FishControlManager:
         self.oldtime = 0
         self.goal = goal
         self.TankBounds = TankBounds
+        self.tfreqmax = tfreqmax
+        self.tailamp = tailamp
+        self.tailfreq = 0
+        self.tailphi = 0
+        self.tailpos = 0
+        
 
     def getControl(self,brainstate,fishstate,dt):
         
@@ -275,6 +281,11 @@ class FishControlManager:
         self.control_inputs = u
         self.controller_error = e
         self.fishstate_old = fishstate
+        
+        self.tailfreq = self.tfreqmax/.1*self.control_inputs.u_U
+        self.tailphi += self.tailfreq*dt
+        #angle is a combination of rudder from turning and sinusoid from speed.
+        self.tailangle = self.tailamp*sin(self.tailphi)-self.control_inputs.u_psi*self.tailamp/6.0
         return u,e
 
     def getGantryCommand(self,brainstate,fishstate,timenow):
