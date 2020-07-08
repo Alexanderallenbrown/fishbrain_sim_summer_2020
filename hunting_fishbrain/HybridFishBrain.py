@@ -62,38 +62,44 @@ class FishBrain:
         self.etilt_thresh = 0.01
         self.ez_thresh = 0.005
         self.complete = False
-        
+        self.shot = False
 
     def update(self,hunt,controller_error,timenow):
         #timenow will tell us whether to really do a state machine update given our Markov update rate
         #hunt is a boolean that tells the fish whether the target is out or not (can delay, but do it outside!!)
         #controller_errors is a list of errors from hunt goals. There are 4 hunt goals:
-        shot = False
+        
         if ((timenow - self.lastTime)>=self.dT):
             if ((not hunt) or (self.complete and self.wasHunting)):
                 if self.wasHunting:
                     self.state = "swim"
+                    self.shot = False
                 #roll the dice
                 roll = random()
                 if(self.state=="swim"):
                     if ((roll>(self.TranMat[0][0])) and (roll<=(self.TranMat[0][1]+self.TranMat[0][0]))):
                         newstate = "coast"
+                        self.shot = False
+
                     else:
                         newstate = self.state
                 elif(self.state=="coast"):
                     if ((roll>(self.TranMat[1][1])) and (roll<=(self.TranMat[1][0]+self.TranMat[1][1]))):
                         newstate = "swim"
+                        self.shot = False
                     else:
                         newstate = self.state
             elif (hunt and self.wasHunting and not self.complete):
                 if(self.state=="huntswim"):
                     if(abs(controller_error.true_dist)<=self.edist_thresh):
                         newstate = "huntrise"
+                        self.shot = False
                     else:
                         newstate = self.state
                 elif(self.state=="huntrise"):
                     if(abs(controller_error.e_z)<=self.ez_thresh):
                         newstate="hunttilt"
+                        self.shot = False
                     else:
                         newstate = self.state
                 elif(self.state=="hunttilt"):
@@ -101,14 +107,17 @@ class FishBrain:
                         shot=True
                     if(abs(controller_error.e_tilt)<=self.etilt_thresh):
                         newstate = "huntcapture"
+                        shot = True
                     else:
                         newstate = self.state
                 elif(self.state=="huntcapture"):
                     if(abs(controller_error.e_dist)<=self.edist_thresh):
                         newstate = "swim"
                         self.complete = True
+                        self.shot = False
                     else:
                         newstate = self.state
+                        self.shot = False
             else:
                 #tell the brain that we are not done hunting
                 self.complete = False
@@ -121,7 +130,7 @@ class FishBrain:
             #save old value of hunt update
             self.wasHunting = hunt
         #actually return the state of the brain to be used in other object/function calls.
-        return self.state,shot
+        return self.state,self.shot
 
 
 class PTWSwimController:
