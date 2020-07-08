@@ -2,7 +2,7 @@ from random import random,gauss
 import math
 from math import *
 import time
-
+PI = math.pi
 
 def sign(inp):
     if(inp==0):
