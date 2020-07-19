@@ -27,7 +27,7 @@ tc = TargetingController()
 # SPENCER PARAMS BELOW
 
 #ACTIVE
-sc = PTWSwimController(muu=0.067,muw=0.0057,muz = 0.0, nu=(.0042),nw=(1.509), nz = sqrt(0.0025),tauu=3.67,tauw = .5916,tauz = .517)
+sc = PTWSwimController(muu=0.067,muw=0.0057,muz = 0.0, nu=(.0042),nw=(1.509), nz = (0.0025),tauu=3.67,tauw = .5916,tauz = .517)
 #INACTIVE
 cc = PTWSwimController(muu=0.0162,muw=0,muz = 0.0, nu=0.18,nw=0, nz = 0,tauu=1.0/20,tauw = 1.0/.18,tauz = 1.0/9.64)
 goals = goalTarg
@@ -84,7 +84,7 @@ def draw():
     
     
     background(255)
-    tanktop.draw(gantry.state)
+    tanktop.draw(gantry.state,cont.tailangle)
     tankfront.draw(gantry.state)
     if(targets.state=="target"):
         rtarg_viztop.drawTargetTop(cont)

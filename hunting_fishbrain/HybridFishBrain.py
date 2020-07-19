@@ -1,6 +1,8 @@
 from random import random,gauss
 import math
+from math import *
 import time
+PI = math.pi
 
 def sign(inp):
     if(inp==0):
@@ -19,7 +21,7 @@ class TankBounds:
         self.zmax=zmax
 
 class FishState():
-    def __init__(self,x=0.3,y=0.05,z=-0.15,tilt=.5,psi=math.pi,U = 0, Psidot =0, Tiltdot = 0,zdot = 0):
+    def __init__(self,x=0.0,y=0.0,z=0,tilt=.5,psi=0,U = 0, Psidot =0, Tiltdot = 0,zdot = 0):
         self.x=x
         self.y=y
         self.z = z
@@ -60,38 +62,44 @@ class FishBrain:
         self.etilt_thresh = 0.01
         self.ez_thresh = 0.005
         self.complete = False
-        
+        self.shot = False
 
     def update(self,hunt,controller_error,timenow):
         #timenow will tell us whether to really do a state machine update given our Markov update rate
         #hunt is a boolean that tells the fish whether the target is out or not (can delay, but do it outside!!)
         #controller_errors is a list of errors from hunt goals. There are 4 hunt goals:
-        shot = False
+        
         if ((timenow - self.lastTime)>=self.dT):
             if ((not hunt) or (self.complete and self.wasHunting)):
                 if self.wasHunting:
                     self.state = "swim"
+                    self.shot = False
                 #roll the dice
                 roll = random()
                 if(self.state=="swim"):
                     if ((roll>(self.TranMat[0][0])) and (roll<=(self.TranMat[0][1]+self.TranMat[0][0]))):
                         newstate = "coast"
+                        self.shot = False
+
                     else:
                         newstate = self.state
                 elif(self.state=="coast"):
                     if ((roll>(self.TranMat[1][1])) and (roll<=(self.TranMat[1][0]+self.TranMat[1][1]))):
                         newstate = "swim"
+                        self.shot = False
                     else:
                         newstate = self.state
             elif (hunt and self.wasHunting and not self.complete):
                 if(self.state=="huntswim"):
                     if(abs(controller_error.true_dist)<=self.edist_thresh):
                         newstate = "huntrise"
+                        self.shot = False
                     else:
                         newstate = self.state
                 elif(self.state=="huntrise"):
                     if(abs(controller_error.e_z)<=self.ez_thresh):
                         newstate="hunttilt"
+                        self.shot = False
                     else:
                         newstate = self.state
                 elif(self.state=="hunttilt"):
@@ -99,14 +107,17 @@ class FishBrain:
                         shot=True
                     if(abs(controller_error.e_tilt)<=self.etilt_thresh):
                         newstate = "huntcapture"
+                        shot = True
                     else:
                         newstate = self.state
                 elif(self.state=="huntcapture"):
                     if(abs(controller_error.e_dist)<=self.edist_thresh):
                         newstate = "swim"
                         self.complete = True
+                        self.shot = False
                     else:
                         newstate = self.state
+                        self.shot = False
             else:
                 #tell the brain that we are not done hunting
                 self.complete = False
@@ -119,7 +130,7 @@ class FishBrain:
             #save old value of hunt update
             self.wasHunting = hunt
         #actually return the state of the brain to be used in other object/function calls.
-        return self.state,shot
+        return self.state,self.shot
 
 
 class PTWSwimController:
@@ -144,13 +155,17 @@ class PTWSwimController:
         # self.oldtime = timenow
         if(dT<=0):
             dT=0.01
+        if(dT>=.1):
+            dT=.1
         self.currzdot = fishstate.zdot#(fishstate.z-self.fishstate_old.z)/dT
         self.currspeed = fishstate.U#((fishstate.x-self.fishstate_old.x)**2+(fishstate.y-self.fishstate_old.y)**2)**.5
         self.currpsidot = fishstate.Psidot#(fishstate.psi-self.fishstate_old.psi)/dT
 
-        self.currzdot += dT/self.tauz*(self.muz-self.currzdot)+dT*gauss(0,self.nz) + .3*dT/(self.tauz)*(-.15/2-fishstate.z)
+
+        self.currzdot += dT/self.tauz*(self.muz-self.currzdot)+dT*gauss(0,self.nz) + .3*dT/(self.tauz)*(-.05-fishstate.z)
         self.currspeed += dT/self.tauu*(self.muu-self.currspeed)+dT*gauss(0,self.nu)
         self.currpsidot += dT/self.tauw*(self.muw-self.currpsidot)+dT*gauss(0,self.nw)
+
         u = ControllerInputs()
         
         u.u_U = self.currspeed
@@ -241,7 +256,7 @@ class TargetingController:
 
 
 class FishControlManager:
-    def __init__(self,goal = FishState(),sc = PTWSwimController(),cc = PTWSwimController(),tc = TargetingController(),TankBounds = [0,.6,0,.3,-.3,0]):
+    def __init__(self,goal = FishState(),sc = PTWSwimController(),cc = PTWSwimController(),tc = TargetingController(),TankBounds = [0,.6,0,.3,-.3,0],tailamp = 30, tfreqmax = 2*2*PI):
         self.sc = sc
         self.cc = cc
 
@@ -253,6 +268,12 @@ class FishControlManager:
         self.oldtime = 0
         self.goal = goal
         self.TankBounds = TankBounds
+        self.tfreqmax = tfreqmax
+        self.tailamp = tailamp
+        self.tailfreq = 0
+        self.tailphi = 0
+        self.tailpos = 0
+        
 
     def getControl(self,brainstate,fishstate,dt):
         
@@ -273,6 +294,11 @@ class FishControlManager:
         self.control_inputs = u
         self.controller_error = e
         self.fishstate_old = fishstate
+        
+        self.tailfreq = self.tfreqmax/.1*self.control_inputs.u_U
+        self.tailphi += self.tailfreq*dt
+        #angle is a combination of rudder from turning and sinusoid from speed.
+        self.tailangle = self.tailamp*sin(self.tailphi)-self.control_inputs.u_psi*self.tailamp/6.0
         return u,e
 
     def getGantryCommand(self,brainstate,fishstate,timenow):
@@ -281,9 +307,11 @@ class FishControlManager:
         if(dt<=0):
             dt=.001
             print("trouble with dt! from controller")
-        if(dt>=.11):
+
+        if(dt>=.1):
             dt=.1
             print("trouble with dT!")
+
         self.oldtime = timenow
         # uplanar = ((fishstate.x-self.fishstate_old.x)**2+(fishstate.y-self.fishstate_old.y)**2)**.5/dt
         # uz = (fishstate.z-self.fishstate_old.z)/dt

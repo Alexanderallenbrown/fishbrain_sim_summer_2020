@@ -72,6 +72,21 @@ class TankVizTop:
         rect(self.bounds[0],self.bounds[2],self.bounds[1]-self.bounds[0],self.bounds[3]-self.bounds[2])
         popMatrix()
     
+    def drawFishTailTop(self,fishpose,tailangle):
+        pushMatrix()
+        translate(self.ox,self.oy)
+        scale(self.simscale)
+        strokeWeight(1.0/self.simscale)
+        translate(fishpose.x,self.bounds[3]-fishpose.y)
+        ellipse(0,0,.01,.01)
+        rotate(-tailangle*PI/180.0-fishpose.psi)
+        line(0,0,-self.fL/4,0)
+        popMatrix()
+    
+    def draw(self,fishpose):
+        self.drawTankTop()
+        self.drawFishTop(fishpose)
+
     def drawFishTop(self,fishpose):
         pushMatrix()
         translate(self.ox,self.oy)
@@ -85,10 +100,10 @@ class TankVizTop:
         line(self.fL/2,0,0.8*self.fL/2,.01)
         popMatrix()
     
-    def draw(self,fishpose):
+    def draw(self,fishpose,tailangle):
         self.drawTankTop()
-        self.drawFishTop(fishpose)
-        
+        self.drawFishTop(fishpose)  
+        self.drawFishTailTop(fishpose,tailangle)      
 
 class TankVizFront:
     def __init__(self,ox,oy,simscale,bounds):
