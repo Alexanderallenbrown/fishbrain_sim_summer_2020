@@ -148,9 +148,9 @@ class PTWSwimController:
         self.currspeed = fishstate.U#((fishstate.x-self.fishstate_old.x)**2+(fishstate.y-self.fishstate_old.y)**2)**.5
         self.currpsidot = fishstate.Psidot#(fishstate.psi-self.fishstate_old.psi)/dT
 
-        self.currzdot += dT/self.tauz*(self.muz-self.currzdot)+gauss(0,self.nz) + .3*dT/(self.tauz)*(-.15/2-fishstate.z)
-        self.currspeed += dT/self.tauu*(self.muu-self.currspeed)+gauss(0,self.nu)
-        self.currpsidot += dT/self.tauw*(self.muw-self.currpsidot)+gauss(0,self.nw)
+        self.currzdot += dT/self.tauz*(self.muz-self.currzdot)+dT*gauss(0,self.nz) + .3*dT/(self.tauz)*(-.15/2-fishstate.z)
+        self.currspeed += dT/self.tauu*(self.muu-self.currspeed)+dT*gauss(0,self.nu)
+        self.currpsidot += dT/self.tauw*(self.muw-self.currpsidot)+dT*gauss(0,self.nw)
         u = ControllerInputs()
         
         u.u_U = self.currspeed
@@ -281,6 +281,9 @@ class FishControlManager:
         if(dt<=0):
             dt=.001
             print("trouble with dt! from controller")
+        if(dt>=.11):
+            dt=.1
+            print("trouble with dT!")
         self.oldtime = timenow
         # uplanar = ((fishstate.x-self.fishstate_old.x)**2+(fishstate.y-self.fishstate_old.y)**2)**.5/dt
         # uz = (fishstate.z-self.fishstate_old.z)/dt

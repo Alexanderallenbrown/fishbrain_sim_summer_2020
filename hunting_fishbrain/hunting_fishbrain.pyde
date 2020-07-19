@@ -22,14 +22,21 @@ goalTarg = FishState(.85,.15,.15,0,0) #the target has no inherent pitch or yaw r
 
 #set up controllers for each state
 tc = TargetingController()
-sc = PTWSwimController(muu=0.02,muw=0.1,muz = 0.0, nu=.01,nw=.5, nz = 0.05,tauu=0.1,tauw = .1,tauz = .1)
-cc = PTWSwimController(muu=0.0,muw=0.0,muz = 0.0, nu=0,nw=0, nz = 0,tauu=0.1,tauw = .1,tauz = .1)
+# sc = PTWSwimController(muu=0.02,muw=0.1,muz = 0.0, nu=.01,nw=.5, nz = 0.05,tauu=0.1,tauw = .1,tauz = .1)
+# cc = PTWSwimController(muu=0.0,muw=0.0,muz = 0.0, nu=0,nw=0, nz = 0,tauu=0.1,tauw = .1,tauz = .1)
+# SPENCER PARAMS BELOW
 
+#ACTIVE
+sc = PTWSwimController(muu=0.067,muw=0.0057,muz = 0.0, nu=(.0042),nw=(1.509), nz = sqrt(0.0025),tauu=3.67,tauw = .5916,tauz = .517)
+#INACTIVE
+cc = PTWSwimController(muu=0.0162,muw=0,muz = 0.0, nu=0.18,nw=0, nz = 0,tauu=1.0/20,tauw = 1.0/.18,tauz = 1.0/9.64)
 goals = goalTarg
 
 TankBounds =[0,.4,0,.15,-.15,0]
 
-brain = FishBrain(TranMat=[[.9,.1],[.2,.8]])
+# brain = FishBrain(TranMat=[[.9,.1],[.2,.8]])
+#spencer params below
+brain = FishBrain(TranMat=[[.9585,1-.9585],[1-.9884,.9884]],dT=0.033)
 cont = FishControlManager(goals,sc,cc,tc,TankBounds)
 
 gantry = SimGantry()
