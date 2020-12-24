@@ -40,9 +40,10 @@ class TwoTargets:
         self.currTime = time.time()
         self.elapsed = self.currTime-self.startTime
         #start state machine logic
-        if((self.elapsed>self.duration) or shot):
+        if((self.elapsed>self.duration)):
+
             if(self.state=="wait"):
-                if(not shot):
+                if(1):
                     newstate = "target"
                     self.startTime = time.time()
                     self.elapsed = 0
@@ -61,13 +62,14 @@ class TwoTargets:
                     self.block+=1
             self.state = newstate
         #now do outputs
+        print("Time: "+str(self.elapsed)+" of "+str(self.duration))
         self.hunt = ((self.state=="target") and ((self.trialTypes[self.trial_ind] != ("CR")) and (self.trialTypes[self.trial_ind] != ("CL"))))
         if((self.trialTypes[self.trial_ind]=="CL") or (self.trialTypes[self.trial_ind]=="EL")):
             self.pose = self.tleftPose
         else:
             self.pose = self.trightPose
         
-        return self.hunt, self.pose, self.state, self.block
+        return self.hunt, self.pose, self.state, self.block,self.duration-self.elapsed
         
         
         
