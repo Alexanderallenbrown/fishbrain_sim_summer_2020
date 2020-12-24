@@ -56,7 +56,7 @@ class TwoTargets:
                 self.elapsed = 0
                 self.startTime = time.time()
                 self.duration = self.ITI_mean + random.randint(-self.ITI_random,self.ITI_random)
-                if(self.trial_ind)>=3:
+                if(self.trial_ind)>3:
                     self.trial_ind=0
                     random.shuffle(self.trialTypes)
                     self.block+=1
