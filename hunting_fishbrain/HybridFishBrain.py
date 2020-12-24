@@ -177,7 +177,7 @@ class PTWSwimController:
 
 
 class TargetingController:
-    def __init__(self,Kpspeed=2,Kppsi=1.5,Kptilt=1,Kpz = .5,tiltAng = 1.0,shotDepth = 0.0):
+    def __init__(self,Kpspeed=2,Kppsi=1.5,Kptilt=1,Kpz = .5,tiltAng = .5,tiltAngOffset = .6,shotDepth = 0.0):
         self.Kpspeed = Kpspeed
         self.Kppsi = Kppsi
         self.Kptilt = Kptilt
@@ -189,6 +189,7 @@ class TargetingController:
         self.Kppsidot = .75
         self.Kpzdot = .1
         self.ang_err_old = 0
+        self.tiltAngOffset = tiltAngOffset
 
     def getTargetingError(self,goal,fishstate,huntcapture=False):
         #get global x and y 
@@ -202,7 +203,7 @@ class TargetingController:
         #find goal distance based on target height
         
         if( not huntcapture):
-            goal_dist = (goal.z-self.shotDepth)/(math.tan(self.tiltAng))
+            goal_dist = (goal.z-self.shotDepth)/(math.tan(self.tiltAng+self.tiltAngOffset))
         else:
             goal_dist = 0
         true_dist = goal_dist - ((fishstate.x-goal.x)**2+(fishstate.y-goal.y)**2)**.5
